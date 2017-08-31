@@ -48,13 +48,9 @@ function gameLoop(){
 	requestAnimationFrame(gameLoop);
 	if(isKeyDown[37]){
 		socket.emit('keyPress', commPlayer, "left");
-		players[commPlayer.id].scale.x = -2;
-		players[commPlayer.id].children[0].scale.x = 2;
 		console.log("Left is being pressed");
 	} else if(isKeyDown[39]){
 		socket.emit('keyPress', commPlayer, "right");
-		players[commPlayer.id].children[0].scale.x = -2;
-		players[commPlayer.id].scale.x = 2;
 		console.log("Right is being pressed");
 	}
 	if(isKeyDown[38]){

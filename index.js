@@ -26,7 +26,14 @@ var settings = {
 // Engine Requirements & Variables
 //
 var Physics = require('physicsjs');
-var World = Physics();
+var world = Physics({
+    // set the timestep
+    timestep: 1000.0 / 160,
+    // maximum number of iterations per step
+    maxIPF: 16,
+    // set the integrator (may also be set with world.add())
+    integrator: 'verlet'
+});
 
 var gravity = Physics.behavior('constant-acceleration', {
     acc: { x : 0, y: 0.0004 } // this is the default
@@ -60,7 +67,7 @@ io.on('connection', function(socket){
 			});
 			gamePlayer.id = players.length;
 			players.push(gamePlayer);
-			World.add(gamePlayer.core);
+			world.add(gamePlayer.core);
 			var joinedPlayer = players.filter(function(item){return item.globalID === player.globalID})[0];
 			console.log(`CONFIRMED JOIN GAME FOR: ${joinedPlayer.name}`);
 			socket.emit('clientData', utils.playerToClient(gamePlayer), utils.playersToPositions(players));
@@ -70,7 +77,7 @@ io.on('connection', function(socket){
 	});
 	// When the server recieves a key press, the players get updated.
 	socket.on('keyPress', function(playerData, key){
-		console.log(`KEYPRESS FROM: ${players[playerData.id].name} | KEY: ${key} | CURRENT: ${JSON.stringify(players[playerData.id].core)}`);
+		console.log(`KEYPRESS FROM: ${players[playerData.id].name} | KEY: ${key} | CURRENT: ${JSON.stringify(players[playerData.id].core.state.pos)}`);
 		//console.log(JSON.stringify(players[playerData.id].core.position));
 		if(key === "left"){
 			players[playerData.id].core.accelerate(Physics.vector(-1,0));
@@ -98,10 +105,11 @@ io.on('connection', function(socket){
 
 http.listen(PORT, function(){
 	console.log('listening on *:' + PORT);
-	//World.add(gravity);
+	//world.add(gravity);
 	Physics.util.ticker.on(function(time){
 		world.step(time);
 	});
+	Physics.util.ticker.start();
 	setInterval(function(){
 		io.emit('update', utils.playersToPositions(players));
 	}, 10);
