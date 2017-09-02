@@ -20,9 +20,11 @@ var io = require('socket.io')(http);
 var players = [];
 
 var settings = {
-	acceleration: 400,
+	acceleration: 500,
+	friction: 0.98,
 	speed: 100,
 	mass: 5,
+	size: 32,
 	timeStep: 1 / 60
 };
 //===================================
@@ -33,13 +35,6 @@ var world = new p2.World({
 	gravity:[0, 0]
 });
 
-var groundBody = new p2.Body({
-	mass: 0,
-	position: [300, -500]
-});
-var groundShape = new p2.Plane();
-groundBody.addShape(groundShape);
-world.addBody(groundBody);
 
 //===================================
 // Asset Routes
@@ -72,7 +67,7 @@ io.on('connection', function(socket){
 				type: "ball"
 			}
 			// Add the shape
-			var circleShape = new p2.Circle({ radius: 12 });
+			var circleShape = new p2.Circle({ radius: settings.size / 2 });
 			gamePlayer.core.addShape(circleShape);
 			gamePlayer.id = players.length;
 			players.push(gamePlayer);
@@ -93,6 +88,7 @@ io.on('connection', function(socket){
 		console.log(`KEYPRESS FROM: ${players[playerData.id].name} | KEY: ${key} | VELO: ${JSON.stringify(players[playerData.id].core.velocity)}`);
 		//console.log(JSON.stringify(players[playerData.id].core.position));
 		var velocity = players[playerData.id].core.velocity;
+		// If the velocity is under the speed limit then register the keys.
 		if((velocity[0] < settings.speed && velocity[1] < settings.speed) && (velocity[0] > -settings.speed && velocity[1] > -settings.speed)){
 			if(key === "left"){
 				players[playerData.id].core.applyForce([-settings.acceleration,velocity[1]]);
@@ -104,6 +100,7 @@ io.on('connection', function(socket){
 				players[playerData.id].core.applyForce([velocity[0],settings.acceleration]);
 			}
 		} else {
+			// If not then limit the velocity
 			if(velocity[0] > settings.speed){
 				velocity[0] = settings.speed;
 			}
@@ -118,6 +115,7 @@ io.on('connection', function(socket){
 			}
 		}
 	});
+	// Chat Stuffs
 	socket.on('chatMessage', function(player, msg){
 		console.log(player.name + ': ' + msg);
 		io.emit('chatMessage', sanitizer.escape(player.name), sanitizer.escape(msg));
@@ -138,12 +136,12 @@ http.listen(PORT, function(){
 		world.step(settings.timeStep);
 		if(world.bodies.length > 1){
 			world.bodies.forEach(function(item, idx){
-				item.velocity[0] *= 0.993;
-				item.velocity[1] *= 0.993;
+				item.velocity[0] *= settings.friction;
+				item.velocity[1] *= settings.friction;
 			});
 		}
 	}, 1000 * settings.timeStep);
 	setInterval(function(){
 		io.emit('update', utils.playersToPositions(players));
-	}, 10);
+	}, 15);
 });

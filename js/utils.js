@@ -1,10 +1,10 @@
 function attachUsername(sprite, name){
 	var nameText = new PIXI.Text(name, new PIXI.TextStyle({
 		fontFamily: 'Verdana',
-		fontSize: 10
+		fontSize: 200
 	}));
 	sprite.addChild(nameText);
-	nameText.y = -20;
+	nameText.y = -80;
 	nameText.anchor.set(0.5);
 	nameText.resolution = 100;
 }

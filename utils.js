@@ -7,8 +7,11 @@ exports.playersToPositions = function(players){
 }
 
 exports.playerToClient = function(player){
-	var client = {x: player.core.position[0], y: player.core.position[1]};
+	var client = {
+		x: player.core.position[0], y: player.core.position[1]
+	};
 	client.id = player.id;
+	client.size = player.core.shapes[0].radius * 2;
 	return client;
 }
 

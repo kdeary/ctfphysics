@@ -3,6 +3,12 @@ body {
 	overflow: hidden;
 }
 
+#pingDisplay {
+	position: absolute;
+	font-family: Verdana;
+	z-index: 9999;
+}
+
 .server-message {
 	color: green;
 }

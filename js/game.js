@@ -7,6 +7,7 @@ var commPlayer = {
 	"name": thename === "" || typeof thename === "undefined" ? "Some Ball" : thename.replace("/", "").substr(0, 15),
 	"globalID": Math.random().toString(36).substr(2, 9)
 }
+var pingTimer = 0;
 //===================================
 // Aliases
 //
@@ -60,7 +61,6 @@ function gameLoop(){
 		socket.emit('keyPress', commPlayer, "down");
 		console.log("Down is being pressed");
 	}
-
 	renderer.render(stage);
 	renderer.resize(window.innerWidth, window.innerHeight);
 }
@@ -104,15 +104,16 @@ socket.on('clientData', function(clientPlayer, newplayers){
 		stage.addChild(newBall);
 		newBall.x = item.x;
 		newBall.y = item.y;
-		newBall.width = 32;
-		newBall.height = 32;
+		newBall.width = clientPlayer.size;
+		newBall.height = clientPlayer.size;
 		newBall.game = {id: idx};
 		attachUsername(newBall, item.name);
 		players.push(newBall);
 		console.log(newBall);
 	});
-	gameLoop();
 	socket.on('update', function(newplayers){
+		console.log(pingTimer);
+		pingTimer = 0;
 		newplayers.forEach(function(item, idx){
 			players[idx].x = item.x;
 			players[idx].y = item.y;
@@ -129,8 +130,8 @@ socket.on('clientData', function(clientPlayer, newplayers){
 			stage.addChild(newBall);
 			newBall.x = item.x;
 			newBall.y = item.y;
-			newBall.width = 32;
-			newBall.height = 32;
+			newBall.width = clientPlayer.size;
+			newBall.height = clientPlayer.size;
 			newBall.game = {id: idx};
 			attachUsername(newBall, item.name);
 			players.push(newBall);
@@ -154,4 +155,11 @@ socket.on('clientData', function(clientPlayer, newplayers){
 		$('#m').val('');
 		return false;
 	});
+	gameLoop();
 });
+setInterval(function(){
+	$("#pingDisplay").text(`Ping: ${pingTimer * 1000}ms`)
+}, 1000);
+setInterval(function(){
+	pingTimer += 0.001
+}, 1);
