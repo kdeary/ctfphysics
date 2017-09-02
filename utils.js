@@ -1,13 +1,13 @@
 exports.playersToPositions = function(players){
 	return players.map(function(item, idx){
-		var client = {x: item.core.state.pos._[0], y: item.core.state.pos._[1]};
+		var client = {x: item.core.position[0], y: item.core.position[1]};
 		client.name = item.name;
 		return client;
 	});
 }
 
 exports.playerToClient = function(player){
-	var client = player.core.state.pos;
+	var client = {x: player.core.position[0], y: player.core.position[1]};
 	client.id = player.id;
 	return client;
 }

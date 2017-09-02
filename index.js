@@ -20,24 +20,27 @@ var io = require('socket.io')(http);
 var players = [];
 
 var settings = {
-	acceleration: 0.5
+	acceleration: 400,
+	speed: 100,
+	mass: 5,
+	timeStep: 1 / 60
 };
 //===================================
 // Engine Requirements & Variables
 //
-var Physics = require('physicsjs');
-var world = Physics({
-    // set the timestep
-    timestep: 1000.0 / 160,
-    // maximum number of iterations per step
-    maxIPF: 16,
-    // set the integrator (may also be set with world.add())
-    integrator: 'verlet'
+var p2 = require('p2');
+var world = new p2.World({
+	gravity:[0, 0]
 });
 
-var gravity = Physics.behavior('constant-acceleration', {
-    acc: { x : 0, y: 0.0004 } // this is the default
+var groundBody = new p2.Body({
+	mass: 0,
+	position: [300, -500]
 });
+var groundShape = new p2.Plane();
+groundBody.addShape(groundShape);
+world.addBody(groundBody);
+
 //===================================
 // Asset Routes
 //
@@ -60,33 +63,59 @@ io.on('connection', function(socket){
 		if(typeof isPlayerJoined === "undefined"){
 			// Setup object to push to the players array.
 			var gamePlayer = player;
-			gamePlayer.core = Physics.body('circle', {
-				x: 200, // x-coordinate
-				y: 200, // y-coordinate
-				radius: 48
+			// Make body and store it inside the object
+			gamePlayer.core = new p2.Body({
+				mass: settings.mass,
+				position: [200, 200]
 			});
+			gamePlayer.game = {
+				type: "ball"
+			}
+			// Add the shape
+			var circleShape = new p2.Circle({ radius: 12 });
+			gamePlayer.core.addShape(circleShape);
 			gamePlayer.id = players.length;
 			players.push(gamePlayer);
-			world.add(gamePlayer.core);
+			// Add the body to the world
+			world.addBody(gamePlayer.core);
+			// Get the joined players name
 			var joinedPlayer = players.filter(function(item){return item.globalID === player.globalID})[0];
 			console.log(`CONFIRMED JOIN GAME FOR: ${joinedPlayer.name}`);
+			// Send Data package back to client
 			socket.emit('clientData', utils.playerToClient(gamePlayer), utils.playersToPositions(players));
+			// Let everyone know there's a new player
 			io.emit('newPlayer', utils.playersToPositions(players));
 			console.log("Sent 'clientData' package");
 		}
 	});
 	// When the server recieves a key press, the players get updated.
 	socket.on('keyPress', function(playerData, key){
-		console.log(`KEYPRESS FROM: ${players[playerData.id].name} | KEY: ${key} | CURRENT: ${JSON.stringify(players[playerData.id].core.state.pos)}`);
+		console.log(`KEYPRESS FROM: ${players[playerData.id].name} | KEY: ${key} | VELO: ${JSON.stringify(players[playerData.id].core.velocity)}`);
 		//console.log(JSON.stringify(players[playerData.id].core.position));
-		if(key === "left"){
-			players[playerData.id].core.accelerate(Physics.vector(-1,0));
-		} else if(key === "right"){
-			players[playerData.id].core.accelerate(Physics.vector(1,0));
-		} else if(key === "up"){
-			players[playerData.id].core.accelerate(Physics.vector(0,-1));
-		} else if(key === "down"){
-			players[playerData.id].core.accelerate(Physics.vector(0,1));
+		var velocity = players[playerData.id].core.velocity;
+		if((velocity[0] < settings.speed && velocity[1] < settings.speed) && (velocity[0] > -settings.speed && velocity[1] > -settings.speed)){
+			if(key === "left"){
+				players[playerData.id].core.applyForce([-settings.acceleration,velocity[1]]);
+			} else if(key === "right"){
+				players[playerData.id].core.applyForce([settings.acceleration,velocity[1]]);
+			} else if(key === "up"){
+				players[playerData.id].core.applyForce([velocity[0],-settings.acceleration]);
+			} else if(key === "down"){
+				players[playerData.id].core.applyForce([velocity[0],settings.acceleration]);
+			}
+		} else {
+			if(velocity[0] > settings.speed){
+				velocity[0] = settings.speed;
+			}
+			if(velocity[0] < -settings.speed){
+				velocity[0] = -settings.speed;
+			}
+			if(velocity[1] < -settings.speed){
+				velocity[1] = -settings.speed;
+			}
+			if(velocity[1] < -settings.speed){
+				velocity[1] = -settings.speed;
+			}
 		}
 	});
 	socket.on('chatMessage', function(player, msg){
@@ -105,11 +134,15 @@ io.on('connection', function(socket){
 
 http.listen(PORT, function(){
 	console.log('listening on *:' + PORT);
-	//world.add(gravity);
-	Physics.util.ticker.on(function(time){
-		world.step(time);
-	});
-	Physics.util.ticker.start();
+	setInterval(function(){
+		world.step(settings.timeStep);
+		if(world.bodies.length > 1){
+			world.bodies.forEach(function(item, idx){
+				item.velocity[0] *= 0.993;
+				item.velocity[1] *= 0.993;
+			});
+		}
+	}, 1000 * settings.timeStep);
 	setInterval(function(){
 		io.emit('update', utils.playersToPositions(players));
 	}, 10);

@@ -1,20 +1,19 @@
 {
-	"name": "pixeldins",
+	"name": "CTFphysics",
 	"version": "1.0.0",
-	"description": "A game about pixels... maybe?",
+	"description": "bawls",
 	"main": "index.js",
 	"scripts": {
 		"test": "nodemon index.js"
 	},
 	"keywords": [
-		"pixel",
-		"shooter",
-		"online"
+		"game"
 	],
 	"author": "Korbin Deary",
 	"license": "ISC",
 	"dependencies": {
 		"express": "^4.15.4",
+		"p2": "^0.7.1",
 		"physicsjs": "^0.7.0",
 		"pixi": "^0.3.1",
 		"pixi.js": "^4.5.4",
