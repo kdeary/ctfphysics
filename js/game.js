@@ -62,7 +62,7 @@ function gameLoop(){
 		console.log("Down is being pressed");
 	}
 	renderer.render(stage);
-	renderer.resize(window.innerWidth, window.innerHeight);
+	renderer.resize(window.outerWidth, window.outerHeight);
 }
 
 function createCanvas(){
@@ -76,13 +76,14 @@ function createCanvas(){
 	renderer.view.style.position = "absolute";
 	renderer.view.style.display = "block";
 	renderer.view.style["background-color"] = "#afafaf";
-	renderer.resize(window.innerWidth, window.innerHeight);
+	renderer.resize(window.outerWidth, window.outerHeight);
 }
 
 function loadAssets(){
 	loader.add([
 		"assets/hamburger.png",
-		"assets/redball.png"
+		"assets/redball.png",
+		"assets/flairs.png"
 	]).on("progress", loadProgressHandler).load(setup);
 }
 
@@ -98,45 +99,22 @@ socket.on('clientData', function(clientPlayer, newplayers){
 	console.log("Recieved 'clientData' package");
 	commPlayer.id = clientPlayer.id;
 	console.log(clientPlayer);
-	players = [];
-	newplayers.forEach(function(item, idx){
-		var newBall = new Sprite.fromImage("assets/redball.png");
-		stage.addChild(newBall);
-		newBall.x = item.x;
-		newBall.y = item.y;
-		newBall.width = clientPlayer.size;
-		newBall.height = clientPlayer.size;
-		newBall.game = {id: idx};
-		attachUsername(newBall, item.name);
-		players.push(newBall);
-		console.log(newBall);
-	});
+	createBalls(newplayers, clientPlayer);
 	socket.on('update', function(newplayers){
-		console.log(pingTimer);
 		pingTimer = 0;
 		newplayers.forEach(function(item, idx){
 			players[idx].x = item.x;
 			players[idx].y = item.y;
-			//console.log(item);
 		});
+	});
+	socket.on('tagged', function(gameData){
+		sounds.powerup.play();
 	});
 	socket.on('newPlayer', function(newplayers){
 		players.forEach(function(item, idx){
 			item.destroy();
 		});
-		players = [];
-		newplayers.forEach(function(item, idx){
-			var newBall = new Sprite.fromImage("assets/redball.png");
-			stage.addChild(newBall);
-			newBall.x = item.x;
-			newBall.y = item.y;
-			newBall.width = clientPlayer.size;
-			newBall.height = clientPlayer.size;
-			newBall.game = {id: idx};
-			attachUsername(newBall, item.name);
-			players.push(newBall);
-			console.log(newBall);
-		});
+		createBalls(newplayers, clientPlayer);
 	});
 	socket.on('chatMessage', function(name, msg){
 	$('#messages').append(`<li>${replaceEmojis(escapeHTML(name + ": " + msg))}</li>`);
@@ -158,8 +136,25 @@ socket.on('clientData', function(clientPlayer, newplayers){
 	gameLoop();
 });
 setInterval(function(){
-	$("#pingDisplay").text(`Ping: ${pingTimer * 1000}ms`)
+	$("#pingDisplay").text(`Ping: ${pingTimer * 1000}ms`);
 }, 1000);
 setInterval(function(){
 	pingTimer += 0.001
 }, 1);
+
+function createBalls(newplayers, clientPlayer){
+	players = [];
+	newplayers.forEach(function(item, idx){
+		var newBall = new Sprite.fromImage("assets/redball.png");
+		stage.addChild(newBall);
+		newBall.x = item.x;
+		newBall.y = item.y;
+		newBall.width = clientPlayer.size;
+		newBall.height = clientPlayer.size;
+		newBall.game = {id: idx};
+		attachUsername(newBall, item.name);
+		attachFlair(newBall, "degree/scope");
+		players.push(newBall);
+		console.log(newBall);
+	});
+}

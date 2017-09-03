@@ -17,6 +17,10 @@ body {
 	font-size: 20px;
 }
 
+#flairs {
+	display: none;
+}
+
 #message-form {
 	background: #000;
 	padding: 3px;

@@ -21,7 +21,7 @@ var players = [];
 
 var settings = {
 	acceleration: 500,
-	friction: 0.98,
+	friction: 0.99,
 	speed: 100,
 	mass: 5,
 	size: 32,
@@ -64,12 +64,14 @@ io.on('connection', function(socket){
 				position: [200, 200]
 			});
 			gamePlayer.game = {
-				type: "ball"
+				type: "ball",
+				tagged: players.length === 0 ? true : false
 			}
 			// Add the shape
 			var circleShape = new p2.Circle({ radius: settings.size / 2 });
 			gamePlayer.core.addShape(circleShape);
 			gamePlayer.id = players.length;
+			gamePlayer.core.playerid = players.length;
 			players.push(gamePlayer);
 			// Add the body to the world
 			world.addBody(gamePlayer.core);
@@ -134,14 +136,44 @@ http.listen(PORT, function(){
 	console.log('listening on *:' + PORT);
 	setInterval(function(){
 		world.step(settings.timeStep);
-		if(world.bodies.length > 1){
-			world.bodies.forEach(function(item, idx){
-				item.velocity[0] *= settings.friction;
-				item.velocity[1] *= settings.friction;
-			});
-		}
+		world.bodies.forEach(function(item, idx){
+			if(typeof item.playerid !== "undefined"){
+				item.velocity[0] = item.velocity[0] * settings.friction;
+				item.velocity[1] = item.velocity[1] * settings.friction;
+			}
+		});
 	}, 1000 * settings.timeStep);
 	setInterval(function(){
 		io.emit('update', utils.playersToPositions(players));
 	}, 15);
+});
+
+setInterval(function(){
+	console.log(JSON.stringify(settings));
+}, 2000);
+
+world.on("beginContact", function(objects){
+	// Checks if the two objects are balls
+	var ballA = objects.bodyA;
+	var ballB = objects.bodyB;
+	if(typeof ballA.playerid !== "undefined" && typeof ballB.playerid !== "undefined"){
+		if(players[ballA.playerid].game.tagged === true){
+			players[ballA.playerid].game.tagged = false;
+			players[ballB.playerid].game.tagged = true;
+			io.emit('tagged', {
+				tagged: players[ballB.playerid],
+				tagger: players[ballA.playerid]
+			});
+			console.log(`${players[ballA.playerid].name} tagged ${players[ballB.playerid].name}.`);
+		} else if(players[ballB.playerid].game.tagged === true){
+			players[ballB.playerid].game.tagged = false;
+			players[ballA.playerid].game.tagged = true;
+			io.emit('tagged', {
+				tagged: players[ballA.playerid],
+				tagger: players[ballB.playerid]
+			});
+			console.log(`${players[ballB.playerid].name} tagged ${players[ballA.playerid].name}.`);
+		}
+	}
+	console.log("CONTACT");
 });

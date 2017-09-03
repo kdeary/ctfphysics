@@ -5,6 +5,8 @@
 	<link rel="stylesheet" type="text/css" href="css/style.css">
 	<script type="text/javascript" src="js/pixi.min.js"></script>
 	<script type="text/javascript" src="js/jquery.min.js"></script>
+	<script type="text/javascript" src="js/howler.min.js"></script>
+	<script type="text/javascript" src="js/flairIndex.js"></script>
 </head>
 <body>
 	<p id="pingDisplay">Ping: 0ms</p>
@@ -14,7 +16,9 @@
 			<input id="m" autocomplete="off" placeholder="Message:" maxlength="100"/>
 		</form>
 	</div>
+	<img src="assets/flairs.png" id="flairs">
 	<script src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript" src="js/sounds.js"></script>
 	<script type="text/javascript" src="js/utils.js"></script>
 	<script type="text/javascript" src="js/game.js"></script>
 </body>

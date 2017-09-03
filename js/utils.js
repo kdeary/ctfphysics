@@ -9,8 +9,17 @@ function attachUsername(sprite, name){
 	nameText.resolution = 100;
 }
 
+function attachFlair(sprite, flairName){
+	var newFlair = new Sprite.fromImage("assets/hamburger.png");
+	sprite.addChild(newFlair);
+	var basetx = new PIXI.BaseTexture($("#flairs")[0]);
+	var flairObject = customflairs.filter(function(item){return item.name === flairName})[0];
+	var flairTexture = new PIXI.Texture(basetx, new PIXI.Rectangle(flairObject.crop[0],flairObject.crop[1],flairObject.crop[2],flairObject.crop[3]));
+	newFlair.setTexture(flairTexture);
+}
+
 function escapeHTML(str){
-	return str.replace("<", "	&#60;").replace(">", "	&#62;");
+	return str.replace("<", "&#60;").replace(">", "&#62;");
 }
 
 function replaceEmojis(str){
