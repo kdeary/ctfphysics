@@ -1,3 +1,5 @@
+var p2 = require('p2');
+
 exports.playersToPositions = function(players){
 	return players.map(function(item, idx){
 		var client = {
@@ -10,10 +12,33 @@ exports.playersToPositions = function(players){
 	});
 }
 
+exports.createMap = function(world, map){
+	for (var i = 0; i < map.tiles.length; i++) {
+		for (var j = 0; j < map.tiles[i].length; j++) {
+			if(map.tiles[i][j] === 0){
+				// Blank Tile
+			} else if(map.tiles[i][j] === 1){
+				// Wall
+				var tileBody = new p2.Body({
+					mass: 0,
+					position: [j*32,i*32]
+				});
+				var boxShape = new p2.Box({
+					width: 32,
+					height: 32
+				});
+				tileBody.addShape(boxShape);
+				world.addBody(tileBody);
+			}
+		}
+	}
+}
+
 exports.playerToClient = function(player){
 	var client = {x: player.core.position[0], y: player.core.position[1]};
 	client.id = player.id;
 	client.size = player.core.shapes[0].radius * 2;
+	client.tagged = player.game.tagged;
 	return client;
 }
 

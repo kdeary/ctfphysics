@@ -7,6 +7,7 @@ var http = require('http').Server(app);
 var path = require('path');
 var utils = require('./utils');
 var sanitizer = require('sanitizer');
+var fs = require('fs');
 var PORT = 3000;
 
 //===================================
@@ -27,6 +28,9 @@ var settings = {
 	size: 32,
 	timeStep: 1 / 60
 };
+
+var map = JSON.parse(fs.readFileSync("./map.json"));
+
 //===================================
 // Engine Requirements & Variables
 //
@@ -34,8 +38,8 @@ var p2 = require('p2');
 var world = new p2.World({
 	gravity:[0, 0]
 });
-
-
+var tagRestrainer = true;
+utils.createMap(world, map);
 //===================================
 // Asset Routes
 //
@@ -79,7 +83,7 @@ io.on('connection', function(socket){
 			var joinedPlayer = players.filter(function(item){return item.globalID === player.globalID})[0];
 			console.log(`CONFIRMED JOIN GAME FOR: ${joinedPlayer.name}`);
 			// Send Data package back to client
-			socket.emit('clientData', utils.playerToClient(gamePlayer), utils.playersToPositions(players));
+			socket.emit('clientData', utils.playerToClient(gamePlayer), utils.playersToPositions(players), map);
 			// Let everyone know there's a new player
 			io.emit('newPlayer', utils.playersToPositions(players));
 			console.log("Sent 'clientData' package");
@@ -148,32 +152,31 @@ http.listen(PORT, function(){
 	}, 15);
 });
 
-setInterval(function(){
-	console.log(JSON.stringify(settings));
-}, 2000);
-
 world.on("beginContact", function(objects){
-	// Checks if the two objects are balls
-	var ballA = objects.bodyA;
-	var ballB = objects.bodyB;
-	if(typeof ballA.playerid !== "undefined" && typeof ballB.playerid !== "undefined"){
-		if(players[ballA.playerid].game.tagged === true){
-			players[ballA.playerid].game.tagged = false;
-			players[ballB.playerid].game.tagged = true;
-			io.emit('tagged', {
-				tagged: players[ballB.playerid],
-				tagger: players[ballA.playerid]
-			});
-			console.log(`${players[ballA.playerid].name} tagged ${players[ballB.playerid].name}.`);
-		} else if(players[ballB.playerid].game.tagged === true){
-			players[ballB.playerid].game.tagged = false;
-			players[ballA.playerid].game.tagged = true;
-			io.emit('tagged', {
-				tagged: players[ballA.playerid],
-				tagger: players[ballB.playerid]
-			});
-			console.log(`${players[ballB.playerid].name} tagged ${players[ballA.playerid].name}.`);
+	world.emit({type: "endContact"});
+	if(tagRestrainer){
+		tagRestrainer = false;
+		// Checks if the two objects are balls
+		var ballA = objects.bodyA;
+		var ballB = objects.bodyB;
+		if(typeof ballA.playerid !== "undefined" && typeof ballB.playerid !== "undefined"){
+			if(players[ballA.playerid].game.tagged === true){
+				players[ballA.playerid].game.tagged = false;
+				players[ballB.playerid].game.tagged = true;
+				console.log(`${players[ballA.playerid].name} tagged ${players[ballB.playerid].name}.`);
+			} else if(players[ballB.playerid].game.tagged === true){
+				players[ballB.playerid].game.tagged = false;
+				players[ballA.playerid].game.tagged = true;
+				console.log(`${players[ballB.playerid].name} tagged ${players[ballA.playerid].name}.`);
+			}
 		}
+		setTimeout(function(){
+			tagRestrainer = true;
+		}, 1000);
 	}
 	console.log("CONTACT");
 });
+
+// world.on("endContact", function(objects){
+// 	tagRestrainer = true;
+// });

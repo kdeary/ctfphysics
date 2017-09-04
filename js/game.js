@@ -22,6 +22,7 @@ Sprite = PIXI.Sprite;
 // Sprite Variables
 //
 var players = [];
+var oldPlayers = [];
 
 //===================================
 // Engine Variables
@@ -95,7 +96,7 @@ document.addEventListener("keyup", function(event) {
 	isKeyDown[event.which] = false;
 });
 
-socket.on('clientData', function(clientPlayer, newplayers){
+socket.on('clientData', function(clientPlayer, newplayers, map){
 	console.log("Recieved 'clientData' package");
 	commPlayer.id = clientPlayer.id;
 	console.log(clientPlayer);
@@ -105,10 +106,14 @@ socket.on('clientData', function(clientPlayer, newplayers){
 		newplayers.forEach(function(item, idx){
 			players[idx].x = item.x;
 			players[idx].y = item.y;
+			players[idx].game.tagged = item.tagged;
+			if(players[idx].game.tagged){
+				players[idx].children[1].setTexture(getFlairTexture("degree/bomb"));
+			} else {
+				players[idx].children[1].setTexture(getFlairTexture("degree/scope"));
+			}
 		});
-	});
-	socket.on('tagged', function(gameData){
-		sounds.powerup.play();
+		oldPlayers = players;
 	});
 	socket.on('newPlayer', function(newplayers){
 		players.forEach(function(item, idx){
@@ -133,7 +138,7 @@ socket.on('clientData', function(clientPlayer, newplayers){
 		$('#m').val('');
 		return false;
 	});
-	gameLoop();
+	createMap(stage, map);
 });
 setInterval(function(){
 	$("#pingDisplay").text(`Ping: ${pingTimer * 1000}ms`);
@@ -145,16 +150,22 @@ setInterval(function(){
 function createBalls(newplayers, clientPlayer){
 	players = [];
 	newplayers.forEach(function(item, idx){
-		var newBall = new Sprite.fromImage("assets/redball.png");
+		var newBall = new Container();
 		stage.addChild(newBall);
+		var newCircle = new Sprite.fromImage("assets/redball.png");
+		newBall.addChild(newCircle);
 		newBall.x = item.x;
 		newBall.y = item.y;
-		newBall.width = clientPlayer.size;
-		newBall.height = clientPlayer.size;
-		newBall.game = {id: idx};
+		newCircle.width = clientPlayer.size;
+		newCircle.height = clientPlayer.size;
+		newBall.game = {
+			id: idx,
+			tagged: clientPlayer.tagged
+		};
+		attachFlair(newBall, "degree/boomerang");
 		attachUsername(newBall, item.name);
-		attachFlair(newBall, "degree/scope");
 		players.push(newBall);
 		console.log(newBall);
 	});
+	oldPlayers = players;
 }

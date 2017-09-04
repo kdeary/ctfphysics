@@ -12,7 +12,7 @@ var customflairs = [
 		price: 200,
 	},
 	{
-		name: "degree/partially Cloudy",
+		name: "degree/partially-cloudy",
 		description: "It's a bit cloudy today.",
 		crop: [16, 0, 16, 16],
 		price: 200,
@@ -120,7 +120,7 @@ var customflairs = [
 		price: 200,
 	},
 	{
-		name: "degree/8-Bit Bomb",
+		name: "degree/pixel-bomb",
 		description: "*Pixelized Boom Sound*",
 		crop: [48, 0, 16, 16],
 		price: 200,
@@ -137,61 +137,55 @@ var customflairs = [
 		crop: [64, 0, 16, 16],
 		price: 200,
 	},
-  {
-		name: "degree/iceberg",
-		description: "Chill.",
-		crop: [64, 0, 16, 16],
-		price: 200,
-	},
-  {
+  	{
 		name: "degree/android",
 		description: "They make phones.",
 		crop: [0, 80, 16, 16],
 		price: 200,
 	},
-  {
+  	{
 		name: "degree/apple",
 		description: "One a day Keeps the noobs away.",
 		crop: [16, 80, 16, 16],
 		price: 200,
 	},
-  {
+  	{
 		name: "degree/battery",
 		description: "It's a D type.",
 		crop: [32, 80, 16, 16],
 		price: 200,
 	},
-  {
+  	{
 		name: "degree/bomb",
 		description: "Boom.",
 		crop: [48, 80, 16, 16],
 		price: 200,
 	},
-  {
+  	{
 		name: "degree/gear",
 		description: "Solid and made out of metal.",
 		crop: [64, 80, 16, 16],
 		price: 200,
 	},
-  {
-		name: "degree/chat Bubble",
+  	{
+		name: "degree/chat-bubble",
 		description: "I'd like to have a little chat with you.",
 		crop: [80, 80, 16, 16],
 		price: 200,
 	},
-  {
+  	{
 		name: "degree/controller",
 		description: "Xbox ones are the most ergonomic.",
 		crop: [96, 80, 16, 16],
 		price: 200,
 	},
-  {
+  	{
 		name: "degree/donut",
 		description: "White Frosted Goodness.",
 		crop: [112, 80, 16, 16],
 		price: 200,
 	},
-  {
+  	{
 		name: "degree/bandaid",
 		description: "Apply firmly to ankles.",
 		crop: [0, 96, 16, 16],
