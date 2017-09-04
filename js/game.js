@@ -107,10 +107,22 @@ socket.on('clientData', function(clientPlayer, newplayers, map){
 			players[idx].x = item.x;
 			players[idx].y = item.y;
 			players[idx].game.tagged = item.tagged;
+			players[idx].game.dead = item.dead;
+			players[idx].game.team = item.team;
 			if(players[idx].game.tagged){
 				players[idx].children[1].setTexture(getFlairTexture("degree/bomb"));
 			} else {
 				players[idx].children[1].setTexture(getFlairTexture("degree/scope"));
+			}
+			if(players[idx].game.dead){
+				players[idx].visible = false;
+			} else {
+				players[idx].visible = true;
+			}
+			if(players[idx].game.team === 2){
+				players[idx].children[0].setTexture(new PIXI.Texture.fromImage("assets/blueball.png"));
+			} else {
+				players[idx].children[0].setTexture(new PIXI.Texture.fromImage("assets/redball.png"));
 			}
 		});
 		oldPlayers = players;
@@ -162,7 +174,7 @@ function createBalls(newplayers, clientPlayer){
 			id: idx,
 			tagged: clientPlayer.tagged
 		};
-		attachFlair(newBall, "degree/boomerang");
+		attachFlair(newBall, "degree/scope");
 		attachUsername(newBall, item.name);
 		players.push(newBall);
 		console.log(newBall);

@@ -6,10 +6,17 @@ exports.playersToPositions = function(players){
 			x: item.core.position[0],
 			y: item.core.position[1],
 			name: item.name,
-			tagged: item.game.tagged
+			tagged: item.game.tagged,
+			team: item.game.team,
+			flag: item.game.flag,
+			dead: item.game.dead
 		};
 		return client;
 	});
+}
+
+exports.pickFromArray = function(array){
+	return array[exports.getRandomInt(0, array.length)];
 }
 
 exports.createMap = function(world, map){
@@ -27,8 +34,62 @@ exports.createMap = function(world, map){
 					width: 32,
 					height: 32
 				});
+				tileBody.gametype = "wall";
 				tileBody.addShape(boxShape);
 				world.addBody(tileBody);
+			} else if(map.tiles[i][j] === 2){
+				// Spike
+				var spikeBody = new p2.Body({
+					mass: 0,
+					position: [j*32,i*32]
+				});
+				var circleShape = new p2.Circle({
+					radius: 14
+				});
+				spikeBody.gametype = "spike";
+				spikeBody.addShape(circleShape);
+				world.addBody(spikeBody);
+			} else if(map.tiles[i][j] === 3){
+				// Boost
+				var boostBody = new p2.Body({
+					mass: 0,
+					position: [j*32,i*32]
+				});
+				var circleShape = new p2.Circle({
+					radius: 14
+				});
+				boostBody.gametype = "boost";
+				boostBody.addShape(circleShape);
+				boostBody.shapes[0].sensor = true;
+				world.addBody(boostBody);
+			} else if(map.tiles[i][j] === 4){
+				// Red Flag
+				var flagBody = new p2.Body({
+					mass: 0,
+					position: [j*32,i*32]
+				});
+				var boxShape = new p2.Box({
+					width: 32,
+					height: 32
+				});
+				flagBody.gametype = "redflag";
+				flagBody.addShape(boxShape);
+				flagBody.shapes[0].sensor = true;
+				world.addBody(flagBody);
+			} else if(map.tiles[i][j] === 5){
+				// Blue Flag
+				var flagBody = new p2.Body({
+					mass: 0,
+					position: [j*32,i*32]
+				});
+				var boxShape = new p2.Box({
+					width: 32,
+					height: 32
+				});
+				flagBody.gametype = "blueflag";
+				flagBody.addShape(boxShape);
+				flagBody.shapes[0].sensor = true;
+				world.addBody(flagBody);
 			}
 		}
 	}
@@ -39,6 +100,8 @@ exports.playerToClient = function(player){
 	client.id = player.id;
 	client.size = player.core.shapes[0].radius * 2;
 	client.tagged = player.game.tagged;
+	client.dead = player.game.dead;
+	client.team = player.game.team;
 	return client;
 }
 

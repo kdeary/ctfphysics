@@ -38,6 +38,42 @@ function createMap(world, map){
 				boxTile.width = 32;
 				boxTile.height = 32;
 				console.log(j*32, i*32);
+			} else if(map.tiles[i][j] === 2){
+				// Spike
+				var boxTile = new Sprite.fromImage("assets/spike.png");
+				world.addChild(boxTile);
+				boxTile.x = j*32;
+				boxTile.y = i*32;
+				boxTile.width = 32;
+				boxTile.height = 32;
+				console.log(j*32, i*32);
+			} else if(map.tiles[i][j] === 3){
+				// Boost
+				var boxTile = new Sprite.fromImage("assets/boost.png");
+				world.addChild(boxTile);
+				boxTile.x = j*32;
+				boxTile.y = i*32;
+				boxTile.width = 32;
+				boxTile.height = 32;
+				console.log(j*32, i*32);
+			} else if(map.tiles[i][j] === 4){
+				// Red Flag
+				var boxTile = new Sprite.fromImage("assets/redflag.png");
+				world.addChild(boxTile);
+				boxTile.x = j*32;
+				boxTile.y = i*32;
+				boxTile.width = 32;
+				boxTile.height = 32;
+				console.log(j*32, i*32);
+			} else if(map.tiles[i][j] === 5){
+				// Red Flag
+				var boxTile = new Sprite.fromImage("assets/blueflag.png");
+				world.addChild(boxTile);
+				boxTile.x = j*32;
+				boxTile.y = i*32;
+				boxTile.width = 32;
+				boxTile.height = 32;
+				console.log(j*32, i*32);
 			}
 		}
 	}

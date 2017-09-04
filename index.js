@@ -26,7 +26,9 @@ var settings = {
 	speed: 100,
 	mass: 5,
 	size: 32,
-	timeStep: 1 / 60
+	timeStep: 1 / 60,
+	spawnTimer: 3000,
+	boostPower: 10
 };
 
 var map = JSON.parse(fs.readFileSync("./map.json"));
@@ -63,13 +65,19 @@ io.on('connection', function(socket){
 			// Setup object to push to the players array.
 			var gamePlayer = player;
 			// Make body and store it inside the object
+			var team = (players.length + 1) % 2 === 1 ? 1 : 2;
+			var spawn = utils.pickFromArray(team === 1 ? map.spawns.red : map.spawns.blue);
 			gamePlayer.core = new p2.Body({
 				mass: settings.mass,
-				position: [200, 200]
+				position: [spawn.x, spawn.y]
 			});
+			console.log((players.length + 1) % 2 === 1 ? "red" : "blue");
 			gamePlayer.game = {
 				type: "ball",
-				tagged: players.length === 0 ? true : false
+				tagged: players.length === 0 ? true : false,
+				team: team,
+				flag: false,
+				dead: false
 			}
 			// Add the shape
 			var circleShape = new p2.Circle({ radius: settings.size / 2 });
@@ -91,33 +99,35 @@ io.on('connection', function(socket){
 	});
 	// When the server recieves a key press, the players get updated.
 	socket.on('keyPress', function(playerData, key){
-		console.log(`KEYPRESS FROM: ${players[playerData.id].name} | KEY: ${key} | VELO: ${JSON.stringify(players[playerData.id].core.velocity)}`);
-		//console.log(JSON.stringify(players[playerData.id].core.position));
-		var velocity = players[playerData.id].core.velocity;
-		// If the velocity is under the speed limit then register the keys.
-		if((velocity[0] < settings.speed && velocity[1] < settings.speed) && (velocity[0] > -settings.speed && velocity[1] > -settings.speed)){
-			if(key === "left"){
-				players[playerData.id].core.applyForce([-settings.acceleration,velocity[1]]);
-			} else if(key === "right"){
-				players[playerData.id].core.applyForce([settings.acceleration,velocity[1]]);
-			} else if(key === "up"){
-				players[playerData.id].core.applyForce([velocity[0],-settings.acceleration]);
-			} else if(key === "down"){
-				players[playerData.id].core.applyForce([velocity[0],settings.acceleration]);
-			}
-		} else {
-			// If not then limit the velocity
-			if(velocity[0] > settings.speed){
-				velocity[0] = settings.speed;
-			}
-			if(velocity[0] < -settings.speed){
-				velocity[0] = -settings.speed;
-			}
-			if(velocity[1] < -settings.speed){
-				velocity[1] = -settings.speed;
-			}
-			if(velocity[1] < -settings.speed){
-				velocity[1] = -settings.speed;
+		if(typeof players[playerData.id] !== "undefined" && !players[playerData.id].dead){
+			console.log(`KEYPRESS FROM: ${players[playerData.id].name} | KEY: ${key} | VELO: ${JSON.stringify(players[playerData.id].core.velocity)}`);
+			//console.log(JSON.stringify(players[playerData.id].core.position));
+			var velocity = players[playerData.id].core.velocity;
+			// If the velocity is under the speed limit then register the keys.
+			if((velocity[0] < settings.speed && velocity[1] < settings.speed) && (velocity[0] > -settings.speed && velocity[1] > -settings.speed)){
+				if(key === "left"){
+					players[playerData.id].core.applyForce([-settings.acceleration,velocity[1]]);
+				} else if(key === "right"){
+					players[playerData.id].core.applyForce([settings.acceleration,velocity[1]]);
+				} else if(key === "up"){
+					players[playerData.id].core.applyForce([velocity[0],-settings.acceleration]);
+				} else if(key === "down"){
+					players[playerData.id].core.applyForce([velocity[0],settings.acceleration]);
+				}
+			} else {
+				// If not then limit the velocity
+				if(velocity[0] > settings.speed){
+					velocity[0] = settings.speed;
+				}
+				if(velocity[0] < -settings.speed){
+					velocity[0] = -settings.speed;
+				}
+				if(velocity[1] < -settings.speed){
+					velocity[1] = -settings.speed;
+				}
+				if(velocity[1] < -settings.speed){
+					velocity[1] = -settings.speed;
+				}
 			}
 		}
 	});
@@ -154,25 +164,81 @@ http.listen(PORT, function(){
 
 world.on("beginContact", function(objects){
 	world.emit({type: "endContact"});
-	if(tagRestrainer){
-		tagRestrainer = false;
-		// Checks if the two objects are balls
-		var ballA = objects.bodyA;
-		var ballB = objects.bodyB;
-		if(typeof ballA.playerid !== "undefined" && typeof ballB.playerid !== "undefined"){
-			if(players[ballA.playerid].game.tagged === true){
-				players[ballA.playerid].game.tagged = false;
-				players[ballB.playerid].game.tagged = true;
-				console.log(`${players[ballA.playerid].name} tagged ${players[ballB.playerid].name}.`);
-			} else if(players[ballB.playerid].game.tagged === true){
-				players[ballB.playerid].game.tagged = false;
-				players[ballA.playerid].game.tagged = true;
-				console.log(`${players[ballB.playerid].name} tagged ${players[ballA.playerid].name}.`);
-			}
+	// Checks if the two objects are balls
+	var bodyA = objects.bodyA;
+	var bodyB = objects.bodyB;
+	if(typeof bodyA.playerid !== "undefined" && typeof bodyB.playerid !== "undefined"){
+		if(players[bodyA.playerid].game.tagged === true){
+			players[bodyA.playerid].game.tagged = false;
+			players[bodyB.playerid].game.tagged = true;
+			console.log(`${players[bodyA.playerid].name} tagged ${players[bodyB.playerid].name}.`);
+		} else if(players[bodyB.playerid].game.tagged === true){
+			players[bodyB.playerid].game.tagged = false;
+			players[bodyA.playerid].game.tagged = true;
+			console.log(`${players[bodyB.playerid].name} tagged ${players[bodyA.playerid].name}.`);
 		}
-		setTimeout(function(){
-			tagRestrainer = true;
-		}, 1000);
+	} else if(bodyA.gametype === "spike" || bodyB.gametype === "spike"){
+		// If an object touches a spike
+		if(typeof bodyA.playerid !== "undefined"){
+			// If the other object is a player
+			players[bodyA.playerid].game.dead = true;
+			var stopX = bodyA.position[0];
+			var stopY = bodyA.position[1];
+			// Stops collision
+			bodyA.shapes[0].sensor = true;
+			var stopBall = setInterval(function(){
+				bodyA.position[0] = stopX;
+				bodyA.position[1] = stopY;
+			}, 10);
+			setTimeout(function(){
+				clearInterval(stopBall);
+				var spawn = utils.pickFromArray(map.spawns.red);
+				bodyA.position[0] = spawn.x;
+				bodyA.position[1] = spawn.y;
+				bodyA.shapes[0].sensor = false;
+				players[bodyA.playerid].game.dead = false;
+				console.log(players[bodyA.playerid].game);
+				bodyA.velocity[0] = 0;
+				bodyA.velocity[1] = 0;
+			}, settings.spawnTimer);
+		} else if(typeof bodyB.playerid !== "undefined"){
+			// If the other object is a player
+			players[bodyB.playerid].game.dead = true;
+			var stopX = bodyB.position[0];
+			var stopY = bodyB.position[1];
+			// Stops collision
+			bodyB.shapes[0].sensor = true;
+			var stopBall = setInterval(function(){
+				bodyB.position[0] = stopX;
+				bodyB.position[1] = stopY;
+			}, 10);
+			setTimeout(function(){
+				clearInterval(stopBall);
+				var spawn = utils.pickFromArray(map.spawns.red);
+				bodyB.position[0] = spawn.x;
+				bodyB.position[1] = spawn.y;
+				bodyB.shapes[0].sensor = false;
+				players[bodyB.playerid].game.dead = false;
+				bodyB.velocity[0] = 0;
+				bodyB.velocity[1] = 0;
+				console.log(players[bodyB.playerid].game);
+			}, settings.spawnTimer);
+		}
+	} else if(bodyA.gametype === "boost" || bodyB.gametype === "boost"){
+		// If an object touches a boost
+		if(typeof bodyA.playerid !== "undefined"){
+			// If the other object is a player
+			settings.speed *= 2;
+			bodyA.applyForce([bodyA.velocity[0] * settings.boostPower,bodyA.velocity[1] * settings.boostPower]);
+			settings.speed *= 0.5;
+		} else if(typeof bodyB.playerid !== "undefined"){
+			// If the other object is a player
+			settings.speed *= 2;
+			bodyB.applyForce([bodyB.velocity[0] * settings.boostPower,bodyB.velocity[1] * settings.boostPower]);
+			settings.speed *= 0.5;
+			// bodyB.velocity[0] *= settings.boostPower;
+			// bodyB.velocity[1] *= settings.boostPower;
+		}
 	}
 	console.log("CONTACT");
 });
