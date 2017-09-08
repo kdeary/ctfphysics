@@ -46,6 +46,7 @@ exports.createMap = function(world, map){
 				var circleShape = new p2.Circle({
 					radius: 14
 				});
+				spikeBody.gameid = j + i;
 				spikeBody.gametype = "spike";
 				spikeBody.addShape(circleShape);
 				world.addBody(spikeBody);
@@ -58,6 +59,7 @@ exports.createMap = function(world, map){
 				var circleShape = new p2.Circle({
 					radius: 14
 				});
+				boostBody.gameid = j + i;
 				boostBody.gametype = "boost";
 				boostBody.addShape(circleShape);
 				boostBody.shapes[0].sensor = true;
@@ -72,6 +74,7 @@ exports.createMap = function(world, map){
 					width: 32,
 					height: 32
 				});
+				flagBody.gameid = j + i;
 				flagBody.gametype = "redflag";
 				flagBody.addShape(boxShape);
 				flagBody.shapes[0].sensor = true;
@@ -86,6 +89,7 @@ exports.createMap = function(world, map){
 					width: 32,
 					height: 32
 				});
+				flagBody.gameid = j + i;
 				flagBody.gametype = "blueflag";
 				flagBody.addShape(boxShape);
 				flagBody.shapes[0].sensor = true;

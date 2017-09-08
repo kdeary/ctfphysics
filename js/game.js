@@ -23,6 +23,10 @@ Sprite = PIXI.Sprite;
 //
 var players = [];
 var oldPlayers = [];
+var entities = {
+	flags: [],
+	boosts: []
+};
 
 //===================================
 // Engine Variables
@@ -63,7 +67,7 @@ function gameLoop(){
 		console.log("Down is being pressed");
 	}
 	renderer.render(stage);
-	renderer.resize(window.outerWidth, window.outerHeight);
+	renderer.resize(window.innerWidth, window.innerHeight);
 }
 
 function createCanvas(){
@@ -77,18 +81,20 @@ function createCanvas(){
 	renderer.view.style.position = "absolute";
 	renderer.view.style.display = "block";
 	renderer.view.style["background-color"] = "#afafaf";
-	renderer.resize(window.outerWidth, window.outerHeight);
+	renderer.resize(window.innerWidth, window.innerWidth);
 }
 
 function loadAssets(){
 	loader.add([
 		"assets/hamburger.png",
 		"assets/redball.png",
+		"assets/blueball.png",
 		"assets/flairs.png"
 	]).on("progress", loadProgressHandler).load(setup);
 }
 
 document.addEventListener("keydown", function(event) {
+	//event.preventDefault();
 	isKeyDown[event.which] = true;
 });
 
@@ -101,14 +107,15 @@ socket.on('clientData', function(clientPlayer, newplayers, map){
 	commPlayer.id = clientPlayer.id;
 	console.log(clientPlayer);
 	createBalls(newplayers, clientPlayer);
-	socket.on('update', function(newplayers){
+	socket.on('update', function(data){
 		pingTimer = 0;
-		newplayers.forEach(function(item, idx){
+		data.players.forEach(function(item, idx){
 			players[idx].x = item.x;
 			players[idx].y = item.y;
 			players[idx].game.tagged = item.tagged;
 			players[idx].game.dead = item.dead;
 			players[idx].game.team = item.team;
+			players[idx].game.flag = item.flag;
 			if(players[idx].game.tagged){
 				players[idx].children[1].setTexture(getFlairTexture("degree/bomb"));
 			} else {
@@ -124,7 +131,40 @@ socket.on('clientData', function(clientPlayer, newplayers, map){
 			} else {
 				players[idx].children[0].setTexture(new PIXI.Texture.fromImage("assets/redball.png"));
 			}
+			if(players[idx].game.flag.type === 1){
+				players[idx].children[3].visible = true;
+				players[idx].children[3].setTexture(new PIXI.Texture.fromImage("assets/redflag.png"));
+				entities.flags.forEach(function(item, idx2){
+					if(item.gameid === players[idx].game.flag.id){
+						item.alpha = 0.5;
+					}
+				});
+			} else if(players[idx].game.flag.type === 2){
+				players[idx].children[3].visible = true;
+				players[idx].children[3].setTexture(new PIXI.Texture.fromImage("assets/blueflag.png"));
+				entities.flags.forEach(function(item, idx2){
+					if(item.gameid === players[idx].game.flag.id){
+						item.alpha = 0.5;
+					}
+				});
+			} else if(players[idx].game.flag.type === 3){
+				players[idx].children[3].visible = true;
+				players[idx].children[3].setTexture(new PIXI.Texture.fromImage("assets/orangeflag.png"));
+				entities.flags.forEach(function(item, idx2){
+					if(item.gameid === players[idx].game.flag.id){
+						item.alpha = 0.5;
+					}
+				});
+			} else if(players[idx].game.flag.type === 0){
+				players[idx].children[3].visible = false;
+				entities.flags.forEach(function(item, idx2){
+					if(item.gameid === players[idx].game.flag.id){
+						item.alpha = 1;
+					}
+				});
+			}
 		});
+		
 		oldPlayers = players;
 	});
 	socket.on('newPlayer', function(newplayers){
@@ -176,6 +216,7 @@ function createBalls(newplayers, clientPlayer){
 		};
 		attachFlair(newBall, "degree/scope");
 		attachUsername(newBall, item.name);
+		attachFlag(newBall);
 		players.push(newBall);
 		console.log(newBall);
 	});

@@ -22,6 +22,15 @@ function attachFlair(sprite, flairName){
 	newFlair.height = sprite.height / 2;
 }
 
+function attachFlag(sprite){
+	var newFlag = new Sprite();
+	sprite.addChild(newFlag);
+	newFlag.x = sprite.width / 4;
+	newFlag.y = -32;
+	newFlag.width = 32;
+	newFlag.height = 32;
+}
+
 
 function createMap(world, map){
 	console.log(map);
@@ -32,7 +41,7 @@ function createMap(world, map){
 			} else if(map.tiles[i][j] === 1){
 				// Wall
 				var boxTile = new Sprite.fromImage("assets/wall.png");
-				world.addChild(boxTile);
+				stage.addChild(boxTile);
 				boxTile.x = j*32;
 				boxTile.y = i*32;
 				boxTile.width = 32;
@@ -41,39 +50,46 @@ function createMap(world, map){
 			} else if(map.tiles[i][j] === 2){
 				// Spike
 				var boxTile = new Sprite.fromImage("assets/spike.png");
-				world.addChild(boxTile);
+				stage.addChild(boxTile);
 				boxTile.x = j*32;
 				boxTile.y = i*32;
 				boxTile.width = 32;
 				boxTile.height = 32;
+				boxTile.gameid = i + j;
 				console.log(j*32, i*32);
 			} else if(map.tiles[i][j] === 3){
 				// Boost
 				var boxTile = new Sprite.fromImage("assets/boost.png");
-				world.addChild(boxTile);
+				stage.addChild(boxTile);
 				boxTile.x = j*32;
 				boxTile.y = i*32;
 				boxTile.width = 32;
 				boxTile.height = 32;
+				boxTile.gameid = i + j;
 				console.log(j*32, i*32);
+				entities.boosts.push(boxTile);
 			} else if(map.tiles[i][j] === 4){
 				// Red Flag
 				var boxTile = new Sprite.fromImage("assets/redflag.png");
-				world.addChild(boxTile);
+				stage.addChild(boxTile);
 				boxTile.x = j*32;
 				boxTile.y = i*32;
 				boxTile.width = 32;
 				boxTile.height = 32;
+				boxTile.gameid = i + j;
 				console.log(j*32, i*32);
+				entities.flags.push(boxTile);
 			} else if(map.tiles[i][j] === 5){
-				// Red Flag
+				// Blue Flag
 				var boxTile = new Sprite.fromImage("assets/blueflag.png");
-				world.addChild(boxTile);
+				stage.addChild(boxTile);
 				boxTile.x = j*32;
 				boxTile.y = i*32;
 				boxTile.width = 32;
 				boxTile.height = 32;
+				boxTile.gameid = i + j;
 				console.log(j*32, i*32);
+				entities.flags.push(boxTile);
 			}
 		}
 	}

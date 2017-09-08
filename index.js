@@ -23,12 +23,19 @@ var players = [];
 var settings = {
 	acceleration: 500,
 	friction: 0.99,
-	speed: 100,
+	speed: 150,
 	mass: 5,
 	size: 32,
 	timeStep: 1 / 60,
 	spawnTimer: 3000,
-	boostPower: 10
+	boostPower: 1200,
+	scoreRed: 0,
+	scoreBlue: 0,
+	tagMode: true
+};
+
+var events = {
+
 };
 
 var map = JSON.parse(fs.readFileSync("./map.json"));
@@ -74,9 +81,9 @@ io.on('connection', function(socket){
 			console.log((players.length + 1) % 2 === 1 ? "red" : "blue");
 			gamePlayer.game = {
 				type: "ball",
-				tagged: players.length === 0 ? true : false,
+				tagged: settings.tagMode ? (players.length === 0 ? true : false) : false,
 				team: team,
-				flag: false,
+				flag: {type: 0, id: 0},
 				dead: false
 			}
 			// Add the shape
@@ -116,18 +123,18 @@ io.on('connection', function(socket){
 				}
 			} else {
 				// If not then limit the velocity
-				if(velocity[0] > settings.speed){
-					velocity[0] = settings.speed;
-				}
-				if(velocity[0] < -settings.speed){
-					velocity[0] = -settings.speed;
-				}
-				if(velocity[1] < -settings.speed){
-					velocity[1] = -settings.speed;
-				}
-				if(velocity[1] < -settings.speed){
-					velocity[1] = -settings.speed;
-				}
+				// if(velocity[0] > settings.speed){
+				// 	velocity[0] = settings.speed;
+				// }
+				// if(velocity[0] < -settings.speed){
+				// 	velocity[0] = -settings.speed;
+				// }
+				// if(velocity[1] < -settings.speed){
+				// 	velocity[1] = -settings.speed;
+				// }
+				// if(velocity[1] < -settings.speed){
+				// 	velocity[1] = -settings.speed;
+				// }
 			}
 		}
 	});
@@ -158,7 +165,10 @@ http.listen(PORT, function(){
 		});
 	}, 1000 * settings.timeStep);
 	setInterval(function(){
-		io.emit('update', utils.playersToPositions(players));
+		io.emit('update', {
+			players: utils.playersToPositions(players),
+			events: events
+		});
 	}, 15);
 });
 
@@ -167,77 +177,142 @@ world.on("beginContact", function(objects){
 	// Checks if the two objects are balls
 	var bodyA = objects.bodyA;
 	var bodyB = objects.bodyB;
-	if(typeof bodyA.playerid !== "undefined" && typeof bodyB.playerid !== "undefined"){
-		if(players[bodyA.playerid].game.tagged === true){
-			players[bodyA.playerid].game.tagged = false;
-			players[bodyB.playerid].game.tagged = true;
-			console.log(`${players[bodyA.playerid].name} tagged ${players[bodyB.playerid].name}.`);
-		} else if(players[bodyB.playerid].game.tagged === true){
-			players[bodyB.playerid].game.tagged = false;
-			players[bodyA.playerid].game.tagged = true;
-			console.log(`${players[bodyB.playerid].name} tagged ${players[bodyA.playerid].name}.`);
-		}
-	} else if(bodyA.gametype === "spike" || bodyB.gametype === "spike"){
+	if(bodyA.gametype === "spike" || bodyB.gametype === "spike"){
 		// If an object touches a spike
+		var body;
 		if(typeof bodyA.playerid !== "undefined"){
-			// If the other object is a player
-			players[bodyA.playerid].game.dead = true;
-			var stopX = bodyA.position[0];
-			var stopY = bodyA.position[1];
-			// Stops collision
-			bodyA.shapes[0].sensor = true;
-			var stopBall = setInterval(function(){
-				bodyA.position[0] = stopX;
-				bodyA.position[1] = stopY;
-			}, 10);
-			setTimeout(function(){
-				clearInterval(stopBall);
-				var spawn = utils.pickFromArray(map.spawns.red);
-				bodyA.position[0] = spawn.x;
-				bodyA.position[1] = spawn.y;
-				bodyA.shapes[0].sensor = false;
-				players[bodyA.playerid].game.dead = false;
-				console.log(players[bodyA.playerid].game);
-				bodyA.velocity[0] = 0;
-				bodyA.velocity[1] = 0;
-			}, settings.spawnTimer);
+			body = bodyA;
 		} else if(typeof bodyB.playerid !== "undefined"){
 			// If the other object is a player
-			players[bodyB.playerid].game.dead = true;
-			var stopX = bodyB.position[0];
-			var stopY = bodyB.position[1];
-			// Stops collision
-			bodyB.shapes[0].sensor = true;
-			var stopBall = setInterval(function(){
-				bodyB.position[0] = stopX;
-				bodyB.position[1] = stopY;
-			}, 10);
-			setTimeout(function(){
-				clearInterval(stopBall);
-				var spawn = utils.pickFromArray(map.spawns.red);
-				bodyB.position[0] = spawn.x;
-				bodyB.position[1] = spawn.y;
-				bodyB.shapes[0].sensor = false;
-				players[bodyB.playerid].game.dead = false;
-				bodyB.velocity[0] = 0;
-				bodyB.velocity[1] = 0;
-				console.log(players[bodyB.playerid].game);
-			}, settings.spawnTimer);
+			body = bodyB;
 		}
+		players[body.playerid].game.dead = true;
+		var stopX = body.position[0];
+		var stopY = body.position[1];
+		// Stops collision
+		body.shapes[0].sensor = true;
+		var stopBall = setInterval(function(){
+			body.position[0] = stopX;
+			body.position[1] = stopY;
+		}, 10);
+		setTimeout(function(){
+			clearInterval(stopBall);
+			var spawn = utils.pickFromArray(players[body.playerid].game.team === 1 ? map.spawns.red : map.spawns.blue);
+			body.position[0] = spawn.x;
+			body.position[1] = spawn.y;
+			body.shapes[0].sensor = false;
+			players[body.playerid].game.dead = false;
+			body.velocity[0] = 0;
+			body.velocity[1] = 0;
+			console.log(players[body.playerid].game);
+		}, settings.spawnTimer);
 	} else if(bodyA.gametype === "boost" || bodyB.gametype === "boost"){
 		// If an object touches a boost
 		if(typeof bodyA.playerid !== "undefined"){
 			// If the other object is a player
-			settings.speed *= 2;
-			bodyA.applyForce([bodyA.velocity[0] * settings.boostPower,bodyA.velocity[1] * settings.boostPower]);
-			settings.speed *= 0.5;
+			var veloX = (bodyA.velocity[0] / Math.abs(bodyA.velocity[0])) * settings.boostPower;
+			var veloY = (bodyA.velocity[1] / Math.abs(bodyA.velocity[1])) * settings.boostPower;
+			console.log(veloX);
+			console.log(veloY);
+			bodyA.applyForce([bodyA.velocity[0] * settings.boostPower, bodyA.velocity[1] * settings.boostPower]);
+			// bodyA.velocity[0] =* settings.boostPower;
+			// bodyA.velocity[1] =* settings.boostPower;
 		} else if(typeof bodyB.playerid !== "undefined"){
 			// If the other object is a player
-			settings.speed *= 2;
-			bodyB.applyForce([bodyB.velocity[0] * settings.boostPower,bodyB.velocity[1] * settings.boostPower]);
-			settings.speed *= 0.5;
-			// bodyB.velocity[0] *= settings.boostPower;
-			// bodyB.velocity[1] *= settings.boostPower;
+			var veloX = (bodyB.velocity[0] / Math.abs(bodyB.velocity[0])) * settings.boostPower;
+			var veloY = (bodyB.velocity[1] / Math.abs(bodyB.velocity[1])) * settings.boostPower;
+			console.log(veloX);
+			console.log(veloY);
+			bodyB.applyForce([bodyB.velocity[0] * settings.boostPower, bodyB.velocity[1] * settings.boostPower]);
+			// bodyB.velocity[0] =* settings.boostPower;
+			// bodyB.velocity[1] =* settings.boostPower;
+		}
+	} else if(bodyA.gametype === "redflag" || bodyB.gametype === "redflag"){
+		// If an object touches a redflag
+		var body;
+		var otherBody;
+		if(typeof bodyA.playerid !== "undefined"){
+			// If the other object is a player
+			body = bodyA;
+			otherBody = bodyB;
+		} else if(typeof bodyB.playerid !== "undefined"){
+			// If the other object is a player
+			body = bodyB;
+			otherBody = bodyA;
+		}
+		if(players[body.playerid].game.team === 1 && players[body.playerid].game.flag.type === 2){
+			players[body.playerid].game.flag.type = 0;
+			settings.scoreRed++;
+		} else if(players[body.playerid].game.team === 2 && players[body.playerid].game.flag.type === 0){
+			players[body.playerid].game.flag.type = 1;
+			players[body.playerid].game.flag.id = otherBody.gameid;
+		}
+		console.log(JSON.stringify(players[body.playerid].game));
+	} else if(bodyA.gametype === "blueflag" || bodyB.gametype === "blueflag"){
+		// If an object touches a blueflag
+		var body;
+		var otherBody;
+		if(typeof bodyA.playerid !== "undefined"){
+			// If the other object is a player
+			body = bodyA;
+			otherBody = bodyB;
+		} else if(typeof bodyB.playerid !== "undefined"){
+			// If the other object is a player
+			body = bodyB;
+			otherBody = bodyA;
+		}
+		if(players[body.playerid].game.team === 2 && players[body.playerid].game.flag.type === 1){
+			players[body.playerid].game.flag.type = 0;
+			settings.scoreBlue++;
+		} else if(players[body.playerid].game.team === 1 && players[body.playerid].game.flag.type === 0){
+			players[body.playerid].game.flag.type = 2;
+			players[body.playerid].game.flag.id = otherBody.gameid;
+		}
+		console.log(JSON.stringify(players[body.playerid].game));
+	} else if(typeof bodyA.playerid !== "undefined" && typeof bodyB.playerid !== "undefined"){
+		var body;
+		var otherBody;
+		if(settings.tagMode){
+			if(players[bodyA.playerid].game.tagged === true){
+				players[bodyA.playerid].game.tagged = false;
+				players[bodyB.playerid].game.tagged = true;
+				console.log(`${players[bodyA.playerid].name} tagged ${players[bodyB.playerid].name}.`);
+			} else if(players[bodyB.playerid].game.tagged === true){
+				players[bodyB.playerid].game.tagged = false;
+				players[bodyA.playerid].game.tagged = true;
+				console.log(`${players[bodyB.playerid].name} tagged ${players[bodyA.playerid].name}.`);
+			}
+		}
+		if(players[bodyA.playerid].game.flag.type > 0){
+			// If the other object is a player
+			body = bodyA;
+			otherBody = bodyB;
+		} else if(players[bodyB.playerid].game.flag.type > 0){
+			// If the other object is a player
+			body = bodyB;
+			otherBody = bodyA;
+		}
+		if(typeof body !== "undefined"){
+			players[body.playerid].game.dead = true;
+			var stopX = body.position[0];
+			var stopY = body.position[1];
+			// Stops collision
+			body.shapes[0].sensor = true;
+			var stopBall = setInterval(function(){
+				body.position[0] = stopX;
+				body.position[1] = stopY;
+			}, 10);
+			setTimeout(function(){
+				clearInterval(stopBall);
+				var spawn = utils.pickFromArray(players[body.playerid].game.team === 1 ? map.spawns.red : map.spawns.blue);
+				body.position[0] = spawn.x;
+				body.position[1] = spawn.y;
+				body.shapes[0].sensor = false;
+				players[body.playerid].game.dead = false;
+				body.velocity[0] = 0;
+				body.velocity[1] = 0;
+				console.log(players[body.playerid].game);
+			}, settings.spawnTimer);
 		}
 	}
 	console.log("CONTACT");

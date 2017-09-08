@@ -331,7 +331,7 @@ var customflairs = [
 	},
 	{
 		name: "degree/firefox",
-		description: "Pull, Aim, Squeeze, Sweep.",
+		description: "water",
 		crop: [0, 144, 16, 16],
 		price: 200,
 	},
