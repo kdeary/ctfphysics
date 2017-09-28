@@ -1,3 +1,5 @@
+var mapSprite;
+
 function attachUsername(sprite, name){
 	var nameText = new PIXI.Text(name, new PIXI.TextStyle({
 		fontFamily: 'Arial',
@@ -27,13 +29,15 @@ function attachFlag(sprite){
 	sprite.addChild(newFlag);
 	newFlag.x = sprite.width / 4;
 	newFlag.y = -32;
-	newFlag.width = 32;
-	newFlag.height = 32;
+	newFlag.width = settings.tileSize;
+	newFlag.height = settings.tileSize;
 }
 
 
 function createMap(world, map){
 	console.log(map);
+	mapSprite = new Container();
+	stage.addChild(mapSprite);
 	for (var i = 0; i < map.tiles.length; i++) {
 		for (var j = 0; j < map.tiles[i].length; j++) {
 			if(map.tiles[i][j] === 0){
@@ -41,54 +45,54 @@ function createMap(world, map){
 			} else if(map.tiles[i][j] === 1){
 				// Wall
 				var boxTile = new Sprite.fromImage("assets/wall.png");
-				stage.addChild(boxTile);
-				boxTile.x = j*32;
-				boxTile.y = i*32;
-				boxTile.width = 32;
-				boxTile.height = 32;
-				console.log(j*32, i*32);
+				mapSprite.addChild(boxTile);
+				boxTile.x = j * settings.tileSize;
+				boxTile.y = i * settings.tileSize;
+				boxTile.width = settings.tileSize;
+				boxTile.height = settings.tileSize;
+				console.log(j * settings.tileSize, i * settings.tileSize);
 			} else if(map.tiles[i][j] === 2){
 				// Spike
 				var boxTile = new Sprite.fromImage("assets/spike.png");
-				stage.addChild(boxTile);
-				boxTile.x = j*32;
-				boxTile.y = i*32;
-				boxTile.width = 32;
-				boxTile.height = 32;
+				mapSprite.addChild(boxTile);
+				boxTile.x = j * settings.tileSize;
+				boxTile.y = i * settings.tileSize;
+				boxTile.width = settings.tileSize;
+				boxTile.height = settings.tileSize;
 				boxTile.gameid = i + j;
-				console.log(j*32, i*32);
+				console.log(j * settings.tileSize, i * settings.tileSize);
 			} else if(map.tiles[i][j] === 3){
 				// Boost
 				var boxTile = new Sprite.fromImage("assets/boost.png");
-				stage.addChild(boxTile);
-				boxTile.x = j*32;
-				boxTile.y = i*32;
-				boxTile.width = 32;
-				boxTile.height = 32;
+				mapSprite.addChild(boxTile);
+				boxTile.x = j * settings.tileSize;
+				boxTile.y = i * settings.tileSize;
+				boxTile.width = settings.tileSize;
+				boxTile.height = settings.tileSize;
 				boxTile.gameid = i + j;
-				console.log(j*32, i*32);
+				console.log(j * settings.tileSize, i * settings.tileSize);
 				entities.boosts.push(boxTile);
 			} else if(map.tiles[i][j] === 4){
 				// Red Flag
 				var boxTile = new Sprite.fromImage("assets/redflag.png");
-				stage.addChild(boxTile);
-				boxTile.x = j*32;
-				boxTile.y = i*32;
-				boxTile.width = 32;
-				boxTile.height = 32;
+				mapSprite.addChild(boxTile);
+				boxTile.x = j * settings.tileSize;
+				boxTile.y = i * settings.tileSize;
+				boxTile.width = settings.tileSize;
+				boxTile.height = settings.tileSize;
 				boxTile.gameid = i + j;
-				console.log(j*32, i*32);
+				console.log(j * settings.tileSize, i * settings.tileSize);
 				entities.flags.push(boxTile);
 			} else if(map.tiles[i][j] === 5){
 				// Blue Flag
 				var boxTile = new Sprite.fromImage("assets/blueflag.png");
-				stage.addChild(boxTile);
-				boxTile.x = j*32;
-				boxTile.y = i*32;
-				boxTile.width = 32;
-				boxTile.height = 32;
+				mapSprite.addChild(boxTile);
+				boxTile.x = j * settings.tileSize;
+				boxTile.y = i * settings.tileSize;
+				boxTile.width = settings.tileSize;
+				boxTile.height = settings.tileSize;
 				boxTile.gameid = i + j;
-				console.log(j*32, i*32);
+				console.log(j * settings.tileSize, i * settings.tileSize);
 				entities.flags.push(boxTile);
 			}
 		}
@@ -119,8 +123,8 @@ function replaceEmojis(str){
 }
 
 function loadProgressHandler(loader, resource) {
-	console.log("loading: " + resource.url); 
-	console.log("progress: " + loader.progress + "%"); 
+	console.log("loading: " + resource.url);
+	console.log("progress: " + loader.progress + "%");
 }
 
 function allValuesSame(arr) {

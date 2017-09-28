@@ -23,6 +23,7 @@ Sprite = PIXI.Sprite;
 //
 var players = [];
 var oldPlayers = [];
+var settings;
 var entities = {
 	flags: [],
 	boosts: []
@@ -102,69 +103,92 @@ document.addEventListener("keyup", function(event) {
 	isKeyDown[event.which] = false;
 });
 
-socket.on('clientData', function(clientPlayer, newplayers, map){
+socket.on('clientData', function(clientPlayer, newplayers, map, serverSettings){
+	settings = serverSettings;
 	console.log("Recieved 'clientData' package");
 	commPlayer.id = clientPlayer.id;
 	console.log(clientPlayer);
+	createMap(stage, map);
 	createBalls(newplayers, clientPlayer);
 	socket.on('update', function(data){
 		pingTimer = 0;
+		var clientSprite = players[clientPlayer.id];
 		data.players.forEach(function(item, idx){
-			players[idx].x = item.x;
-			players[idx].y = item.y;
-			players[idx].game.tagged = item.tagged;
-			players[idx].game.dead = item.dead;
-			players[idx].game.team = item.team;
-			players[idx].game.flag = item.flag;
-			if(players[idx].game.tagged){
-				players[idx].children[1].setTexture(getFlairTexture("degree/bomb"));
+			if(item !== null){
+				if(clientPlayer.id === idx){
+					players[idx].x = (window.innerWidth / 2) - (players[idx].width / 2);
+					players[idx].y = (window.innerHeight / 2) - (players[idx].height / 2);
+					mapSprite.x = -(item.x - ((window.innerWidth / 2) - (players[idx].width / 2)));
+					mapSprite.y = -(item.y - ((window.innerHeight / 2) - (players[idx].height / 2)));
+				} else {
+					players[idx].x = item.x;
+					players[idx].y = item.y;
+				}
+				players[idx].angle = item.angle;
+				players[idx].game.tagged = item.tagged;
+				players[idx].game.dead = item.dead;
+				players[idx].game.team = item.team;
+				players[idx].game.flag = item.flag;
+				if(players[idx].game.tagged){
+					players[idx].children[1].setTexture(getFlairTexture("degree/bomb"));
+				} else {
+					players[idx].children[1].setTexture(getFlairTexture("degree/scope"));
+				}
+				if(players[idx].game.dead){
+					players[idx].visible = false;
+				} else {
+					players[idx].visible = true;
+				}
+				if(players[idx].game.team === 2){
+					players[idx].children[0].setTexture(new PIXI.Texture.fromImage("assets/blueball.png"));
+				} else {
+					players[idx].children[0].setTexture(new PIXI.Texture.fromImage("assets/redball.png"));
+				}
+				if(players[idx].game.flag.type === 1){
+					players[idx].children[3].visible = true;
+					players[idx].children[3].setTexture(new PIXI.Texture.fromImage("assets/redflag.png"));
+					entities.flags.forEach(function(item, idx2){
+						if(item.gameid === players[idx].game.flag.id){
+							item.alpha = 0.5;
+						}
+					});
+				} else if(players[idx].game.flag.type === 2){
+					players[idx].children[3].visible = true;
+					players[idx].children[3].setTexture(new PIXI.Texture.fromImage("assets/blueflag.png"));
+					entities.flags.forEach(function(item, idx2){
+						if(item.gameid === players[idx].game.flag.id){
+							item.alpha = 0.5;
+						}
+					});
+				} else if(players[idx].game.flag.type === 3){
+					players[idx].children[3].visible = true;
+					players[idx].children[3].setTexture(new PIXI.Texture.fromImage("assets/orangeflag.png"));
+					entities.flags.forEach(function(item, idx2){
+						if(item.gameid === players[idx].game.flag.id){
+							item.alpha = 0.5;
+						}
+					});
+				} else if(players[idx].game.flag.type === 0){
+					players[idx].children[3].visible = false;
+					entities.flags.forEach(function(item, idx2){
+						if(item.gameid === players[idx].game.flag.id){
+							item.alpha = 1;
+						}
+					});
+				}
 			} else {
-				players[idx].children[1].setTexture(getFlairTexture("degree/scope"));
-			}
-			if(players[idx].game.dead){
 				players[idx].visible = false;
-			} else {
-				players[idx].visible = true;
-			}
-			if(players[idx].game.team === 2){
-				players[idx].children[0].setTexture(new PIXI.Texture.fromImage("assets/blueball.png"));
-			} else {
-				players[idx].children[0].setTexture(new PIXI.Texture.fromImage("assets/redball.png"));
-			}
-			if(players[idx].game.flag.type === 1){
-				players[idx].children[3].visible = true;
-				players[idx].children[3].setTexture(new PIXI.Texture.fromImage("assets/redflag.png"));
-				entities.flags.forEach(function(item, idx2){
-					if(item.gameid === players[idx].game.flag.id){
-						item.alpha = 0.5;
-					}
-				});
-			} else if(players[idx].game.flag.type === 2){
-				players[idx].children[3].visible = true;
-				players[idx].children[3].setTexture(new PIXI.Texture.fromImage("assets/blueflag.png"));
-				entities.flags.forEach(function(item, idx2){
-					if(item.gameid === players[idx].game.flag.id){
-						item.alpha = 0.5;
-					}
-				});
-			} else if(players[idx].game.flag.type === 3){
-				players[idx].children[3].visible = true;
-				players[idx].children[3].setTexture(new PIXI.Texture.fromImage("assets/orangeflag.png"));
-				entities.flags.forEach(function(item, idx2){
-					if(item.gameid === players[idx].game.flag.id){
-						item.alpha = 0.5;
-					}
-				});
-			} else if(players[idx].game.flag.type === 0){
-				players[idx].children[3].visible = false;
-				entities.flags.forEach(function(item, idx2){
-					if(item.gameid === players[idx].game.flag.id){
-						item.alpha = 1;
-					}
-				});
 			}
 		});
-		
+		data.entities.boosts.forEach(function(boost, idx){
+			if(boost.respawn > 0){
+				var boostEntity = entities.boosts.filter(function(item){return item.gameid === boost.id})[0];
+				boostEntity.alpha = 0.5;
+			} else {
+				var boostEntity = entities.boosts.filter(function(item){return item.gameid === boost.id})[0];
+				boostEntity.alpha = 1;
+			}
+		});
 		oldPlayers = players;
 	});
 	socket.on('newPlayer', function(newplayers){
@@ -190,7 +214,6 @@ socket.on('clientData', function(clientPlayer, newplayers, map){
 		$('#m').val('');
 		return false;
 	});
-	createMap(stage, map);
 });
 setInterval(function(){
 	$("#pingDisplay").text(`Ping: ${pingTimer * 1000}ms`);
@@ -203,7 +226,11 @@ function createBalls(newplayers, clientPlayer){
 	players = [];
 	newplayers.forEach(function(item, idx){
 		var newBall = new Container();
-		stage.addChild(newBall);
+		if(commPlayer.id === idx){
+			stage.addChild(newBall);
+		} else {
+			mapSprite.addChild(newBall);
+		}
 		var newCircle = new Sprite.fromImage("assets/redball.png");
 		newBall.addChild(newCircle);
 		newBall.x = item.x;

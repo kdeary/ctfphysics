@@ -25,20 +25,33 @@ var settings = {
 	friction: 0.99,
 	speed: 150,
 	mass: 5,
-	size: 32,
+	ballSize: 64,
+	tileSize: 64,
+	viewWidth: 500,
+	viewHeight: 500,
 	timeStep: 1 / 60,
 	spawnTimer: 3000,
-	boostPower: 1200,
+	boostPower: 1,
+	boostRespawn: 2000,
 	scoreRed: 0,
 	scoreBlue: 0,
 	tagMode: true
 };
+
+var entities = {
+	boosts: []
+}
 
 var events = {
 
 };
 
 var map = JSON.parse(fs.readFileSync("./map.json"));
+
+utils.init({
+	settings: settings,
+	map: map
+});
 
 //===================================
 // Engine Requirements & Variables
@@ -48,7 +61,7 @@ var world = new p2.World({
 	gravity:[0, 0]
 });
 var tagRestrainer = true;
-utils.createMap(world, map);
+utils.createMap(world, map, entities);
 //===================================
 // Asset Routes
 //
@@ -65,6 +78,7 @@ app.get('/', function(req, res){
 
 io.on('connection', function(socket){
 	// Confirms that the player will join the game.
+	var socketPlayer;
 	socket.on('confirmJoin', function(player){
 		var isPlayerJoined = players.filter(function(item){return item.globalID === player.globalID})[0];
 		// If player is not already in game then push them to the players array.
@@ -87,20 +101,21 @@ io.on('connection', function(socket){
 				dead: false
 			}
 			// Add the shape
-			var circleShape = new p2.Circle({ radius: settings.size / 2 });
+			var circleShape = new p2.Circle({ radius: settings.ballSize / 2 });
 			gamePlayer.core.addShape(circleShape);
 			gamePlayer.id = players.length;
 			gamePlayer.core.playerid = players.length;
 			players.push(gamePlayer);
+			socketPlayer = gamePlayer;
 			// Add the body to the world
 			world.addBody(gamePlayer.core);
 			// Get the joined players name
 			var joinedPlayer = players.filter(function(item){return item.globalID === player.globalID})[0];
 			console.log(`CONFIRMED JOIN GAME FOR: ${joinedPlayer.name}`);
 			// Send Data package back to client
-			socket.emit('clientData', utils.playerToClient(gamePlayer), utils.playersToPositions(players), map);
+			socket.emit('clientData', utils.playerToClient(gamePlayer), utils.playersToPositions(players, "firstRun"), map, settings);
 			// Let everyone know there's a new player
-			io.emit('newPlayer', utils.playersToPositions(players));
+			io.emit('newPlayer', utils.playersToPositions(players, "firstRun"));
 			console.log("Sent 'clientData' package");
 		}
 	});
@@ -151,12 +166,29 @@ io.on('connection', function(socket){
 		io.emit('serverMessage', 'Server: Someone Disconnected');
 	});
 	console.log("USER CONNECTION");
+	//===================================
+	// Update Interval
+	//
+	setInterval(function(){
+		if(typeof socketPlayer !== "undefined"){
+			socket.emit('update', {
+				players: utils.playersToPositions(players, socketPlayer),
+				events: events,
+				entities: {
+					boosts: utils.boostsToData(entities.boosts)
+				}
+			});
+		}
+	}, 15);
 });
+
+
 
 http.listen(PORT, function(){
 	console.log('listening on *:' + PORT);
 	setInterval(function(){
 		world.step(settings.timeStep);
+		// Extra Friction For Balls
 		world.bodies.forEach(function(item, idx){
 			if(typeof item.playerid !== "undefined"){
 				item.velocity[0] = item.velocity[0] * settings.friction;
@@ -164,16 +196,14 @@ http.listen(PORT, function(){
 			}
 		});
 	}, 1000 * settings.timeStep);
-	setInterval(function(){
-		io.emit('update', {
-			players: utils.playersToPositions(players),
-			events: events
-		});
-	}, 15);
 });
 
+
+//===================================
+// Contacts with objects
+//
 world.on("beginContact", function(objects){
-	world.emit({type: "endContact"});
+	//world.emit({type: "endContact"});
 	// Checks if the two objects are balls
 	var bodyA = objects.bodyA;
 	var bodyB = objects.bodyB;
@@ -186,46 +216,38 @@ world.on("beginContact", function(objects){
 			// If the other object is a player
 			body = bodyB;
 		}
-		players[body.playerid].game.dead = true;
-		var stopX = body.position[0];
-		var stopY = body.position[1];
-		// Stops collision
-		body.shapes[0].sensor = true;
-		var stopBall = setInterval(function(){
-			body.position[0] = stopX;
-			body.position[1] = stopY;
-		}, 10);
-		setTimeout(function(){
-			clearInterval(stopBall);
-			var spawn = utils.pickFromArray(players[body.playerid].game.team === 1 ? map.spawns.red : map.spawns.blue);
-			body.position[0] = spawn.x;
-			body.position[1] = spawn.y;
-			body.shapes[0].sensor = false;
-			players[body.playerid].game.dead = false;
-			body.velocity[0] = 0;
-			body.velocity[1] = 0;
-			console.log(players[body.playerid].game);
-		}, settings.spawnTimer);
+		// KILL BALL
+		utils.killBall(body, players);
 	} else if(bodyA.gametype === "boost" || bodyB.gametype === "boost"){
 		// If an object touches a boost
+		var body;
+		var otherBody;
 		if(typeof bodyA.playerid !== "undefined"){
-			// If the other object is a player
-			var veloX = (bodyA.velocity[0] / Math.abs(bodyA.velocity[0])) * settings.boostPower;
-			var veloY = (bodyA.velocity[1] / Math.abs(bodyA.velocity[1])) * settings.boostPower;
-			console.log(veloX);
-			console.log(veloY);
-			bodyA.applyForce([bodyA.velocity[0] * settings.boostPower, bodyA.velocity[1] * settings.boostPower]);
-			// bodyA.velocity[0] =* settings.boostPower;
-			// bodyA.velocity[1] =* settings.boostPower;
+			body = bodyA;
+			otherBody = bodyB;
 		} else if(typeof bodyB.playerid !== "undefined"){
-			// If the other object is a player
-			var veloX = (bodyB.velocity[0] / Math.abs(bodyB.velocity[0])) * settings.boostPower;
-			var veloY = (bodyB.velocity[1] / Math.abs(bodyB.velocity[1])) * settings.boostPower;
-			console.log(veloX);
-			console.log(veloY);
-			bodyB.applyForce([bodyB.velocity[0] * settings.boostPower, bodyB.velocity[1] * settings.boostPower]);
-			// bodyB.velocity[0] =* settings.boostPower;
-			// bodyB.velocity[1] =* settings.boostPower;
+			body = bodyB;
+			otherBody = bodyA;
+		}
+		if(typeof body !== "undefined"){
+			if(otherBody.respawn <= 0){
+				var veloX = (body.velocity[0]) * (settings.boostPower);
+				var veloY = (body.velocity[1]) * (settings.boostPower);
+				console.log(veloX);
+				console.log(veloY);
+				//body.applyForce([veloX, veloY]);
+				body.velocity[0] = veloX;
+				body.velocity[1] = veloY;
+
+				otherBody.respawn = settings.boostRespawn;
+				var respawner = setInterval(function(){
+					if(otherBody.respawn > 0){
+						otherBody.respawn -= 1;
+					} else {
+						clearInterval(respawner);
+					}
+				}, 1);
+			}
 		}
 	} else if(bodyA.gametype === "redflag" || bodyB.gametype === "redflag"){
 		// If an object touches a redflag
@@ -240,12 +262,22 @@ world.on("beginContact", function(objects){
 			body = bodyB;
 			otherBody = bodyA;
 		}
-		if(players[body.playerid].game.team === 1 && players[body.playerid].game.flag.type === 2){
-			players[body.playerid].game.flag.type = 0;
-			settings.scoreRed++;
-		} else if(players[body.playerid].game.team === 2 && players[body.playerid].game.flag.type === 0){
-			players[body.playerid].game.flag.type = 1;
-			players[body.playerid].game.flag.id = otherBody.gameid;
+		// Checks if flag is taken
+		if(!otherBody.taken){
+			var playerIsRed = players[body.playerid].game.team === 1;
+			var playerIsHoldingBlueFlag = players[body.playerid].game.flag.type === 2;
+
+			var playerIsBlue = players[body.playerid].game.team === 2;
+			var playerIsNotHoldingFlag = players[body.playerid].game.flag.type === 0;
+
+			if(playerIsRed && playerIsHoldingBlueFlag){
+				players[body.playerid].game.flag.type = 0;
+				settings.scoreRed++;
+			} else if(players[body.playerid].game.team === 2 && playerIsNotHoldingFlag){
+				players[body.playerid].game.flag.type = 1;
+				players[body.playerid].game.flag.id = otherBody.gameid;
+				otherBody.taken = true;
+			}
 		}
 		console.log(JSON.stringify(players[body.playerid].game));
 	} else if(bodyA.gametype === "blueflag" || bodyB.gametype === "blueflag"){
@@ -261,29 +293,42 @@ world.on("beginContact", function(objects){
 			body = bodyB;
 			otherBody = bodyA;
 		}
-		if(players[body.playerid].game.team === 2 && players[body.playerid].game.flag.type === 1){
-			players[body.playerid].game.flag.type = 0;
-			settings.scoreBlue++;
-		} else if(players[body.playerid].game.team === 1 && players[body.playerid].game.flag.type === 0){
-			players[body.playerid].game.flag.type = 2;
-			players[body.playerid].game.flag.id = otherBody.gameid;
+		if(!otherBody.taken){
+			var playerIsBlue = players[body.playerid].game.team === 2;
+			var playerIsHoldingRedFlag = players[body.playerid].game.flag.type === 1;
+
+			var playerIsRed = players[body.playerid].game.team === 1;
+			var playerIsNotHoldingFlag = players[body.playerid].game.flag.type === 0;
+
+			if(playerIsBlue && playerIsHoldingRedFlag){
+				// Score Flag
+				players[body.playerid].game.flag.type = 0;
+				settings.scoreBlue++;
+			} else if(playerIsRed && playerIsNotHoldingFlag){
+				// Take Flag
+				players[body.playerid].game.flag.type = 2;
+				players[body.playerid].game.flag.id = otherBody.gameid;
+			}
 		}
 		console.log(JSON.stringify(players[body.playerid].game));
 	} else if(typeof bodyA.playerid !== "undefined" && typeof bodyB.playerid !== "undefined"){
 		var body;
 		var otherBody;
 		if(settings.tagMode){
-			if(players[bodyA.playerid].game.tagged === true){
+			if(players[bodyA.playerid].game.tagged){
 				players[bodyA.playerid].game.tagged = false;
 				players[bodyB.playerid].game.tagged = true;
 				console.log(`${players[bodyA.playerid].name} tagged ${players[bodyB.playerid].name}.`);
-			} else if(players[bodyB.playerid].game.tagged === true){
+			} else if(players[bodyB.playerid].game.tagged){
 				players[bodyB.playerid].game.tagged = false;
 				players[bodyA.playerid].game.tagged = true;
 				console.log(`${players[bodyB.playerid].name} tagged ${players[bodyA.playerid].name}.`);
 			}
 		}
-		if(players[bodyA.playerid].game.flag.type > 0){
+		// Check if player is not holding flag
+		if(players[bodyA.playerid].game.flag.type > 0 && players[bodyA.playerid].game.flag.type > 0){
+
+		} else if(players[bodyA.playerid].game.flag.type > 0){
 			// If the other object is a player
 			body = bodyA;
 			otherBody = bodyB;
@@ -292,32 +337,8 @@ world.on("beginContact", function(objects){
 			body = bodyB;
 			otherBody = bodyA;
 		}
-		if(typeof body !== "undefined"){
-			players[body.playerid].game.dead = true;
-			var stopX = body.position[0];
-			var stopY = body.position[1];
-			// Stops collision
-			body.shapes[0].sensor = true;
-			var stopBall = setInterval(function(){
-				body.position[0] = stopX;
-				body.position[1] = stopY;
-			}, 10);
-			setTimeout(function(){
-				clearInterval(stopBall);
-				var spawn = utils.pickFromArray(players[body.playerid].game.team === 1 ? map.spawns.red : map.spawns.blue);
-				body.position[0] = spawn.x;
-				body.position[1] = spawn.y;
-				body.shapes[0].sensor = false;
-				players[body.playerid].game.dead = false;
-				body.velocity[0] = 0;
-				body.velocity[1] = 0;
-				console.log(players[body.playerid].game);
-			}, settings.spawnTimer);
-		}
+		// KILL BALL
+		utils.killBall(body, players);
 	}
 	console.log("CONTACT");
 });
-
-// world.on("endContact", function(objects){
-// 	tagRestrainer = true;
-// });
